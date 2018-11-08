@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import sys
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import r2_score
@@ -28,7 +29,7 @@ def get_permutations(X, n=1):
 
 all_combos = []
 
-for i in range(5):
+for i in range(len(non_medv)):
     all_combos += get_permutations(non_medv, i + 1)
 
 best_score = 0
