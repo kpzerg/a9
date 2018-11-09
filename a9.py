@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import sys
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
 
 df = pd.read_csv('./housing.txt', sep='\s+')
 df.columns = ['CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT', 'MEDV']
@@ -12,6 +13,7 @@ df.head()
 regressor = LinearRegression()
 quadratic = PolynomialFeatures(degree=2)
 cubic = PolynomialFeatures(degree=3)
+scaler = StandardScaler()
 
 non_medv = [[column] for column in df.columns if column != 'MEDV']
 
@@ -32,33 +34,45 @@ all_combos = []
 for i in range(len(non_medv)):
     all_combos += get_permutations(non_medv, i + 1)
 
+train_percent = 0.3
+
 best_score = 0
 best_selection_transformation = None
 for combo in all_combos:
     print("fitting for combo %s" % (combo))
+
     X = df[combo].values
-    X_quad = quadratic.fit_transform(X)
-    X_cubic = cubic.fit_transform(X)
     y = df['MEDV'].values
 
-    regressor = LinearRegression()
+    X_std = scaler.fit_transform(X)
+    y_std = scaler.fit_transform(y[:, np.newaxis]).flatten()
 
-    regressor.fit(X, y)
-    linear_score = r2_score(y, regressor.predict(X))
+    X_train, X_test, y_train, y_test = train_test_split(X_std, y_std, test_size=0.3, random_state=0)
+
+    X_lin_train = X_train
+    X_quad_train = quadratic.fit_transform(X_train)
+    X_cubic_train = cubic.fit_transform(X_train)
+
+    X_lin_test = X_test
+    X_quad_test = quadratic.fit_transform(X_test)
+    X_cubic_test = cubic.fit_transform(X_test)
+
+    regressor.fit(X_lin_train, y_train)
+    linear_score = r2_score(y_test, regressor.predict(X_lin_test))
     if linear_score > best_score:
         best_score = linear_score
         best_selection_transformation = "%s linear (%f)" % (combo, best_score)
     print("linear score: %s" % linear_score)
     
-    regressor.fit(X_quad, y)
-    quad_score = r2_score(y, regressor.predict(X_quad))
+    regressor.fit(X_quad_train, y_train)
+    quad_score = r2_score(y_test, regressor.predict(X_quad_test))
     if quad_score > best_score:
         best_score = quad_score
         best_selection_transformation = "%s quadratic (%f)" % (combo, best_score)
     print("quadratic score: %s" % quad_score)
 
-    regressor.fit(X_cubic, y)
-    cubic_score = r2_score(y, regressor.predict(X_cubic))
+    regressor.fit(X_cubic_train, y_train)
+    cubic_score = r2_score(y_test, regressor.predict(X_cubic_test))
     if cubic_score > best_score:
         best_score = cubic_score
         best_selection_transformation = "%s cubic (%f)" % (combo, best_score)
